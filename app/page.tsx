@@ -1,101 +1,157 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+
+// mui components
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  Button,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+} from "@mui/material";
+
+// mui icons
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import CancelIcon from "@mui/icons-material/Cancel";
+
+// styles
+import { styles } from "./styles";
+
+// steps configuration
+const stepsList = [
+  { key: "contractSigned", label: "Contract signed" },
+  { key: "depositPaid", label: "Deposit paid" },
+  { key: "membershipPaid", label: "Membership fee paid", alwaysComplete: true },
+  { key: "welcomeEmailSent", label: "Your welcome email has been sent" },
+];
+
+/**
+ * Determines which icon to display based on step completion status.
+ */
+const getIcon = (completed: boolean, alwaysComplete = false) => {
+  if (alwaysComplete || completed) return <CheckCircleIcon color="success" sx={styles.icon} />;
+  return <WarningAmberIcon color="warning" sx={styles.icon} />;
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [steps, setSteps] = useState({
+    contractSigned: false,
+    depositPaid: false,
+    membershipPaid: true, // always paid
+    welcomeEmailSent: false,
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  /**
+   * Loads saved progress from localStorage on first render.
+   */
+  useEffect(() => {
+    const savedSteps = JSON.parse(localStorage.getItem("moveInSteps") || "{}");
+    setSteps((prev) => ({ ...prev, ...savedSteps }));
+  }, []);
+
+  /**
+   * Saves move-in progress to localStorage whenever steps change.
+   */
+  useEffect(() => {
+    localStorage.setItem("moveInSteps", JSON.stringify(steps));
+  }, [steps]);
+
+  /**
+   * Marks a step as completed and updates state.
+   */
+  const handleComplete = (step: string) => {
+    setSteps((prev) => ({ ...prev, [step]: true }));
+  };
+
+  // check if all required steps are completed
+  const allStepsCompleted = Object.entries(steps)
+    .filter(([key]) => key !== "membershipPaid") // ignore static steps
+    .every(([, value]) => value);
+
+  return (
+    <Box sx={styles.layout}>
+      {/* Sidebar */}
+      <Drawer variant="permanent" sx={styles.drawer}>
+        <Box sx={styles.sidebar}>
+          <Typography variant="h6" gutterBottom>
+            NABYT
+          </Typography>
+          <List>
+            {["Homepage", "Profile", "Bookings", "Documents", "Payments"].map((text) => (
+              <ListItem key={text}>
+                <ListItemText primary={text} />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
+
+      {/* Main Content */}
+      <Box sx={styles.content}>
+        <Container maxWidth="md">
+          <Typography variant="h5" sx={styles.title}>
+            Manage Your Move-in
+          </Typography>
+
+          <Paper sx={styles.card}>
+            <Typography variant="h6">Your Move-in Progress</Typography>
+
+            {stepsList.map(({ key, label, alwaysComplete }) => (
+              <Box key={key} sx={styles.step}>
+                {getIcon(steps[key], alwaysComplete)}
+                <Typography>{steps[key] || alwaysComplete ? `${label} ✅` : label}</Typography>
+                {!steps[key] && !alwaysComplete && (
+                  <Button size="small" variant="contained" sx={styles.button} onClick={() => handleComplete(key)}>
+                    {key === "contractSigned" ? "Activate Now" : key === "depositPaid" ? "Pay Now" : "Complete"}
+                  </Button>
+                )}
+              </Box>
+            ))}
+
+            <Typography variant="h6" sx={styles.subTitle}>
+              Move-in Instructions
+            </Typography>
+            <Box sx={styles.step}>
+              {allStepsCompleted ? (
+                <Button variant="contained" color="primary" onClick={() => alert("Move-in instructions coming soon!")}>
+                  Get Move-in Instructions
+                </Button>
+              ) : (
+                <>
+                  <CancelIcon color="error" sx={styles.icon} />
+                  <Typography color="error">Disabled: Complete all steps to enable.</Typography>
+                </>
+              )}
+            </Box>
+
+            <Typography variant="h6" sx={styles.subTitle}>
+              Notifications
+            </Typography>
+            <Typography>
+              {allStepsCompleted
+                ? "You've successfully completed all steps. You can now proceed with your move-in."
+                : "You have pending actions. Please complete all steps to proceed with your move-in."}
+            </Typography>
+
+            <Divider sx={styles.divider} />
+            <Typography variant="h6">Need Help?</Typography>
+            <Button sx={styles.helpButton} variant="outlined">
+              Help Center
+            </Button>
+            <Button sx={styles.helpButton} variant="outlined">
+              Contact Support
+            </Button>
+          </Paper>
+        </Container>
+      </Box>
+    </Box>
   );
 }
