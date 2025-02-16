@@ -1,31 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Box, Container, Typography, Paper, Button, Drawer, List, ListItem, ListItemText, Divider } from "@mui/material";
+import { CheckCircle as CheckCircleIcon, WarningAmber as WarningAmberIcon, Cancel as CancelIcon } from "@mui/icons-material";
 
-// mui components
-import {
-  Box,
-  Container,
-  Typography,
-  Paper,
-  Button,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-} from "@mui/material";
-
-// mui icons
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import CancelIcon from "@mui/icons-material/Cancel";
-
-// styles
-import { styles } from "./styles";
-
-// steps configuration
 const stepsList = [
   { key: "contractSigned", label: "Contract signed" },
   { key: "depositPaid", label: "Deposit paid" },
@@ -33,122 +11,95 @@ const stepsList = [
   { key: "welcomeEmailSent", label: "Your welcome email has been sent" },
 ];
 
-/**
- * Determines which icon to display based on step completion status.
- */
-const getIcon = (completed: boolean, alwaysComplete = false) => {
-  if (alwaysComplete || completed) return <CheckCircleIcon color="success" sx={styles.icon} />;
-  return <WarningAmberIcon color="warning" sx={styles.icon} />;
-};
+// get icon based on step status
+const getIcon = (completed: boolean, alwaysComplete = false) =>
+  alwaysComplete || completed ? <CheckCircleIcon color="success" /> : <WarningAmberIcon color="warning" />;
 
 export default function Home() {
-  const [steps, setSteps] = useState({
+  const defaultSteps = {
     contractSigned: false,
     depositPaid: false,
     membershipPaid: true, // always paid
     welcomeEmailSent: false,
-  });
-
-  /**
-   * Loads saved progress from localStorage on first render.
-   */
-  useEffect(() => {
-    const savedSteps = JSON.parse(localStorage.getItem("moveInSteps") || "{}");
-    setSteps((prev) => ({ ...prev, ...savedSteps }));
-  }, []);
-
-  /**
-   * Saves move-in progress to localStorage whenever steps change.
-   */
-  useEffect(() => {
-    localStorage.setItem("moveInSteps", JSON.stringify(steps));
-  }, [steps]);
-
-  /**
-   * Marks a step as completed and updates state.
-   */
-  const handleComplete = (step: string) => {
-    setSteps((prev) => ({ ...prev, [step]: true }));
   };
 
-  // check if all required steps are completed
-  const allStepsCompleted = Object.entries(steps)
-    .filter(([key]) => key !== "membershipPaid") // ignore static steps
-    .every(([, value]) => value);
+  const [steps, setSteps] = useState(defaultSteps);
+  const [loading, setLoading] = useState(true);
+
+  // 🚨 resets progress on every load
+  useEffect(() => {
+    localStorage.removeItem("moveInSteps"); // wipe out saved progress
+    setSteps(defaultSteps); // reset state
+    setLoading(false);
+  }, []);
+
+  // update steps (but no longer saves to localStorage)
+  const updateSteps = (step: keyof typeof defaultSteps) => {
+    setSteps((prev) => {
+      if (prev[step]) return prev; // prevent useless updates
+      return { ...prev, [step]: true };
+    });
+  };
+
+  if (loading) return <Typography>Loading...</Typography>;
+
+  const allStepsCompleted = stepsList.every(({ key, alwaysComplete }) => alwaysComplete || steps[key]);
 
   return (
-    <Box sx={styles.layout}>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
       {/* Sidebar */}
-      <Drawer variant="permanent" sx={styles.drawer}>
-        <Box sx={styles.sidebar}>
-          <Typography variant="h6" gutterBottom>
-            NABYT
-          </Typography>
+      <Drawer variant="permanent" sx={{ width: 240, flexShrink: 0 }}>
+        <Box sx={{ width: 240, p: 2 }}>
+          <Typography variant="h6" gutterBottom>NABYT</Typography>
           <List>
             {["Homepage", "Profile", "Bookings", "Documents", "Payments"].map((text) => (
-              <ListItem key={text}>
-                <ListItemText primary={text} />
-              </ListItem>
+              <ListItem key={text}><ListItemText primary={text} /></ListItem>
             ))}
           </List>
         </Box>
       </Drawer>
 
       {/* Main Content */}
-      <Box sx={styles.content}>
+      <Box sx={{ flexGrow: 1, p: 3 }}>
         <Container maxWidth="md">
-          <Typography variant="h5" sx={styles.title}>
-            Manage Your Move-in
-          </Typography>
-
-          <Paper sx={styles.card}>
+          <Typography variant="h5" gutterBottom>Manage Your Move-in</Typography>
+          <Paper sx={{ p: 3 }}>
             <Typography variant="h6">Your Move-in Progress</Typography>
 
-            {stepsList.map(({ key, label, alwaysComplete }) => (
-              <Box key={key} sx={styles.step}>
-                {getIcon(steps[key], alwaysComplete)}
-                <Typography>{steps[key] || alwaysComplete ? `${label} ✅` : label}</Typography>
-                {!steps[key] && !alwaysComplete && (
-                  <Button size="small" variant="contained" sx={styles.button} onClick={() => handleComplete(key)}>
-                    {key === "contractSigned" ? "Activate Now" : key === "depositPaid" ? "Pay Now" : "Complete"}
-                  </Button>
-                )}
-              </Box>
-            ))}
+            {stepsList.map(({ key, label, alwaysComplete }) => {
+              const isCompleted = steps[key] || alwaysComplete;
 
-            <Typography variant="h6" sx={styles.subTitle}>
-              Move-in Instructions
-            </Typography>
-            <Box sx={styles.step}>
+              return (
+                <Box key={key} sx={{ display: "flex", alignItems: "center", gap: 1, my: 1 }}>
+                  {getIcon(isCompleted, alwaysComplete)}
+                  <Typography>{isCompleted ? `${label} ✅` : label}</Typography>
+                  {!isCompleted && (
+                    <Button size="small" variant="contained" onClick={() => updateSteps(key)}>Complete</Button>
+                  )}
+                </Box>
+              );
+            })}
+
+            <Typography variant="h6" sx={{ mt: 3 }}>Move-in Instructions</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, my: 1 }}>
               {allStepsCompleted ? (
-                <Button variant="contained" color="primary" onClick={() => alert("Move-in instructions coming soon!")}>
+                <Button variant="contained" onClick={() => alert("Move-in instructions coming soon!")}>
                   Get Move-in Instructions
                 </Button>
               ) : (
                 <>
-                  <CancelIcon color="error" sx={styles.icon} />
+                  <CancelIcon color="error" />
                   <Typography color="error">Disabled: Complete all steps to enable.</Typography>
                 </>
               )}
             </Box>
 
-            <Typography variant="h6" sx={styles.subTitle}>
-              Notifications
-            </Typography>
-            <Typography>
-              {allStepsCompleted
-                ? "You've successfully completed all steps. You can now proceed with your move-in."
-                : "You have pending actions. Please complete all steps to proceed with your move-in."}
-            </Typography>
-
-            <Divider sx={styles.divider} />
+            <Divider sx={{ my: 2 }} />
             <Typography variant="h6">Need Help?</Typography>
-            <Button sx={styles.helpButton} variant="outlined">
-              Help Center
-            </Button>
-            <Button sx={styles.helpButton} variant="outlined">
-              Contact Support
-            </Button>
+            <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+              <Button variant="outlined">Help Center</Button>
+              <Button variant="outlined">Contact Support</Button>
+            </Box>
           </Paper>
         </Container>
       </Box>
