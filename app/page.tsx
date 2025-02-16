@@ -16,13 +16,13 @@ const stepsList = [
 ];
 
 export default function Home() {
-  const [steps, setSteps] = useState({});
+  const [steps, setSteps] = useState<Record<string, boolean>>({});
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
 
   useEffect(() => {
     try {
       const rawData = localStorage.getItem(STORAGE_KEY);
-      const parsedData = rawData ? JSON.parse(rawData) : null;
+      const parsedData: Record<string, boolean> | null = rawData ? JSON.parse(rawData) : null;
 
       // Validate parsedData to make sure it's an object and not garbage
       if (parsedData && typeof parsedData === "object") {
@@ -42,7 +42,7 @@ export default function Home() {
     }
   }, []);
 
-  const updateSteps = (step) => {
+  const updateSteps = (step: string) => {
     setSteps((prev) => {
       const newSteps = { ...prev, [step]: true };
       try {
