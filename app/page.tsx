@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Container, Typography, Paper, Button, Drawer, List, ListItem, ListItemText, Divider } from "@mui/material";
-import { CheckCircle as CheckCircleIcon, WarningAmber as WarningAmberIcon, Cancel as CancelIcon } from "@mui/icons-material";
+import { 
+  Box, Container, Typography, Paper, Button, Drawer, List, ListItem, ListItemText, Divider, Snackbar 
+} from "@mui/material";
+import { CheckCircle, WarningAmber, Cancel } from "@mui/icons-material";
+
+const STORAGE_KEY = "moveInProgress";
 
 const stepsList = [
   { key: "contractSigned", label: "Contract signed" },
@@ -11,37 +15,44 @@ const stepsList = [
   { key: "welcomeEmailSent", label: "Your welcome email has been sent" },
 ];
 
-// get icon based on step status
-const getIcon = (completed: boolean, alwaysComplete = false) =>
-  alwaysComplete || completed ? <CheckCircleIcon color="success" /> : <WarningAmberIcon color="warning" />;
-
 export default function Home() {
-  const defaultSteps = {
-    contractSigned: false,
-    depositPaid: false,
-    membershipPaid: true, // always paid
-    welcomeEmailSent: false,
-  };
+  const [steps, setSteps] = useState({});
+  const [snackbar, setSnackbar] = useState({ open: false, message: "" });
 
-  const [steps, setSteps] = useState(defaultSteps);
-  const [loading, setLoading] = useState(true);
-
-  // 🚨 resets progress on every load
   useEffect(() => {
-    localStorage.removeItem("moveInSteps"); // wipe out saved progress
-    setSteps(defaultSteps); // reset state
-    setLoading(false);
+    try {
+      const rawData = localStorage.getItem(STORAGE_KEY);
+      const parsedData = rawData ? JSON.parse(rawData) : null;
+
+      // Validate parsedData to make sure it's an object and not garbage
+      if (parsedData && typeof parsedData === "object") {
+        setSteps(parsedData);
+      } else {
+        throw new Error("Invalid stored data");
+      }
+    } catch (error) {
+      console.error("Error loading steps from localStorage:", error);
+      // Reset to default if parsing fails
+      setSteps({
+        contractSigned: false,
+        depositPaid: false,
+        membershipPaid: true,
+        welcomeEmailSent: false,
+      });
+    }
   }, []);
 
-  // update steps (but no longer saves to localStorage)
-  const updateSteps = (step: keyof typeof defaultSteps) => {
+  const updateSteps = (step) => {
     setSteps((prev) => {
-      if (prev[step]) return prev; // prevent useless updates
-      return { ...prev, [step]: true };
+      const newSteps = { ...prev, [step]: true };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSteps));
+      } catch (error) {
+        console.error("Error saving to localStorage:", error);
+      }
+      return newSteps;
     });
   };
-
-  if (loading) return <Typography>Loading...</Typography>;
 
   const allStepsCompleted = stepsList.every(({ key, alwaysComplete }) => alwaysComplete || steps[key]);
 
@@ -64,14 +75,14 @@ export default function Home() {
         <Container maxWidth="md">
           <Typography variant="h5" gutterBottom>Manage Your Move-in</Typography>
           <Paper sx={{ p: 3 }}>
-            <Typography variant="h6">Your Move-in Progress</Typography>
+            <Typography variant="h6" color="error">DEMO MODE: Progress persists now!</Typography>
 
             {stepsList.map(({ key, label, alwaysComplete }) => {
               const isCompleted = steps[key] || alwaysComplete;
 
               return (
                 <Box key={key} sx={{ display: "flex", alignItems: "center", gap: 1, my: 1 }}>
-                  {getIcon(isCompleted, alwaysComplete)}
+                  {isCompleted ? <CheckCircle color="success" /> : <WarningAmber color="warning" />}
                   <Typography>{isCompleted ? `${label} ✅` : label}</Typography>
                   {!isCompleted && (
                     <Button size="small" variant="contained" onClick={() => updateSteps(key)}>Complete</Button>
@@ -83,12 +94,15 @@ export default function Home() {
             <Typography variant="h6" sx={{ mt: 3 }}>Move-in Instructions</Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, my: 1 }}>
               {allStepsCompleted ? (
-                <Button variant="contained" onClick={() => alert("Move-in instructions coming soon!")}>
+                <Button 
+                  variant="contained" 
+                  onClick={() => setSnackbar({ open: true, message: "Move-in instructions coming soon!" })}
+                >
                   Get Move-in Instructions
                 </Button>
               ) : (
                 <>
-                  <CancelIcon color="error" />
+                  <Cancel color="error" />
                   <Typography color="error">Disabled: Complete all steps to enable.</Typography>
                 </>
               )}
@@ -103,6 +117,14 @@ export default function Home() {
           </Paper>
         </Container>
       </Box>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ open: false, message: "" })}
+        message={snackbar.message}
+      />
     </Box>
   );
 }
